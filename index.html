@@ -1,28 +1,193 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <title>Minecraft Clone – 7054</title>
+  <meta charset="UTF-8">
+  <title>Roblox-Style World</title>
   <style>
-    body{margin:0;overflow:hidden;background:#87ceeb}
-    #crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font:24px bold;pointer-events:none}
+    body{margin:0;overflow:hidden;background:#87ceeb;font-family:Arial,Helvetica,sans-serif}
+    #crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:28px;font-weight:bold;pointer-events:none;text-shadow:0 0 4px #000}
+    #controls{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);color:#fff;padding:6px 12px;border-radius:6px;font-size:13px}
+    canvas{display:block}
   </style>
 </head>
 <body>
 <div id="crosshair">+</div>
+<div id="controls">Arrow / WASD + Mouse | Click to break / place</div>
+<canvas id="game"></canvas>
+
+<!-- Three.js -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script>
-/* ---------- Minecraft clone in one file ---------- */
-const scene=new THREE.Scene(); scene.fog=new THREE.Fog(0x87ceeb,10,100);
-const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,1000);
-const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setSize(innerWidth,innerHeight); document.body.appendChild(renderer.domElement);
-scene.add(new THREE.AmbientLight(0xffffff,.7)); scene.add(new THREE.DirectionalLight(0xffffff,.5).position.set(1,1,1));
-const SIZE=32,blocks={},geo=new THREE.BoxGeometry(1,1,1),mats={grass:new THREE.MeshLambertMaterial({color:0x4a7c59}),dirt:new THREE.MeshLambertMaterial({color:0x8b4513}),stone:new THREE.MeshLambertMaterial({color:0x696969})};
-function noise(x,z){return Math.sin(x*.1)*Math.cos(z*.1)*3+Math.sin(x*.05)*Math.cos(z*.05)*5;}
-for(let x=-SIZE/2;x<SIZE/2;x++)for(let z=-SIZE/2;z<SIZE/2;z++){const h=Math.floor(noise(x,z));for(let y=-5;y<=h;y++){const type=y===h?'grass':y>=h-3?'dirt':'stone';const mesh=new THREE.Mesh(geo,mats[type]);mesh.position.set(x,y,z);scene.add(mesh);blocks[`${x},${y},${z}`]=mesh;}}
-camera.position.set(0,10,0);let vy=0,onGround=false;const keys={};onkeydown=e=>keys[e.code]=1;onkeyup=e=>keys[e.code]=0;document.addEventListener('click',()=>document.body.requestPointerLock());onmousemove=e=>{if(document.pointerLockElement===document.body){camera.rotation.y-=e.movementX*.002;camera.rotation.x-=e.movementY*.002;camera.rotation.x=Math.max(-Math.PI/2,Math.min(Math.PI/2,camera.rotation.x));}};
-const raycaster=new THREE.Raycaster();onmousedown=e=>{if(document.pointerLockElement!==document.body)return;raycaster.set(camera.position,new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion));const i=raycaster.intersectObjects(Object.values(blocks));if(!i.length)return;const b=i[0].object,p=b.position,n=i[0].face.normal,x=p.x+n.x,y=p.y+n.y,z=p.z+n.z;if(e.button===0){scene.remove(b);delete blocks[`${p.x},${p.y},${p.z}`];}else{const mesh=new THREE.Mesh(geo,mats.grass);mesh.position.set(x,y,z);scene.add(mesh);blocks[`${x},${y},${z}`]=mesh;}};
-function animate(){requestAnimationFrame(animate);const dir=new THREE.Vector3();if(keys['KeyW'])dir.z-=1;if(keys['KeyS'])dir.z+=1;if(keys['KeyA'])dir.x-=1;if(keys['KeyD'])dir.x+=1;dir.normalize().applyQuaternion(camera.quaternion);camera.position.add(dir.multiplyScalar(.2));vy-=.02;camera.position.y+=vy;if(camera.position.y<1.6){camera.position.y=1.6;vy=0;onGround=true;}if(keys['Space']&&onGround){vy=.3;onGround=false;}renderer.render(scene,camera);}animate();
+/* ======================================================
+   ONE-FILE MINI-WORLD  (≈ 300 lines)
+   ====================================================== */
+
+const scene    = new THREE.Scene();
+scene.fog      = new THREE.Fog(0x87ceeb, 40, 150);
+const camera   = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, .1, 200);
+const renderer = new THREE.WebGLRenderer({canvas:document.getElementById('game'), antialias:true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x87ceeb);
+document.body.appendChild(renderer.domElement);
+
+/* ---------- Lighting ---------- */
+scene.add(new THREE.AmbientLight(0xffffff,.7));
+const sun = new THREE.DirectionalLight(0xffffff,.9);
+sun.position.set(1,1,1);
+scene.add(sun);
+
+/* ---------- Materials ---------- */
+const blockMat = {
+  grass : new THREE.MeshLambertMaterial({color:0x4a7c59}),
+  dirt  : new THREE.MeshLambertMaterial({color:0x8b4513}),
+  stone : new THREE.MeshLambertMaterial({color:0x696969}),
+  wood  : new THREE.MeshLambertMaterial({color:0x8b4513}),
+  leaf  : new THREE.MeshLambertMaterial({color:0x2d9d2d}),
+  sand  : new THREE.MeshLambertMaterial({color:0xd2b48c})
+};
+const geoCube = new THREE.BoxGeometry(1,1,1);
+
+/* ---------- Terrain & Chunks ---------- */
+const WORLD_RAD = 128;
+const blocks = new Map();
+const chunkSize = 16;
+
+function key(x,y,z){return `${x}|${y}|${z}`;}
+function noise(x,z){return Math.sin(x*.03)*Math.cos(z*.03)*5+Math.sin(x*.01)*Math.cos(z*.01)*15;}
+function getHeight(x,z){return Math.floor(noise(x,z))+10;}
+
+function addBlock(x,y,z,type){
+  if(y<0||y>64) return;
+  const k=key(x,y,z);
+  if(blocks.has(k)) return;
+  const mesh=new THREE.Mesh(geoCube,blockMat[type]);
+  mesh.position.set(x,y,z);
+  mesh.userData={type,x,y,z};
+  blocks.set(k,mesh);
+  scene.add(mesh);
+}
+
+function genChunk(cx,cz){
+  const baseX=cx*chunkSize, baseZ=cz*chunkSize;
+  for(let x=0;x<chunkSize;x++){
+    const worldX=baseX+x;
+    for(let z=0;z<chunkSize;z++){
+      const worldZ=baseZ+z;
+      const h=getHeight(worldX,worldZ);
+      for(let y=-2;y<=h;y++){
+        const blockType=y===h?(Math.random()<.3?'grass':'dirt'):(y>=h-3?'dirt':'stone');
+        addBlock(worldX,y,worldZ,blockType);
+      }
+      /* vegetation */
+      if(Math.random()<.05 && h>10){
+        addTree(worldX,h+1,worldZ);
+      }else if(Math.random()<.15 && h>2){
+        addGrass(worldX,h+1,worldZ);
+      }
+    }
+  }
+}
+
+/* ---------- Vegetation ---------- */
+function addTree(x,y,z){
+  for(let i=0;i<6;i++) addBlock(x,y+i,z,'wood');
+  for(let dx=-2;dx<=2;dx++)
+    for(let dy=4;dy<=7;dy++)
+      for(let dz=-2;dz<=2;dz++)
+        if(Math.abs(dx)+Math.abs(dz)+Math.abs(dy-5.5)<4)
+          addBlock(x+dx,y+dy,z+dz,'leaf');
+}
+function addGrass(x,y,z){
+  if(!blocks.has(key(x,y-1,z))) return;
+  if(Math.random()<.5) addBlock(x,y,z,'grass'); // tall grass
+}
+
+/* ---------- Player & Controls ---------- */
+let px=0, py=20, pz=0;
+let velY=0, onGround=false;
+const keys={};
+onkeydown=e=>keys[e.code]=true;
+onkeyup  =e=>keys[e.code]=false;
+document.addEventListener('click',()=>document.body.requestPointerLock());
+onmousemove=e=>{
+  if(document.pointerLockElement===document.body){
+    camera.rotation.y-=e.movementX*0.002;
+    camera.rotation.x-=e.movementY*0.002;
+    camera.rotation.x=Math.max(-Math.PI/2,Math.min(Math.PI/2,camera.rotation.x));
+  }
+};
+
+/* ---------- Raycast ---------- */
+const raycaster=new THREE.Raycaster();
+onmousedown=e=>{
+  if(document.pointerLockElement!==document.body)return;
+  const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
+  raycaster.set(camera.position,dir);
+  const arr=[...blocks.values()];
+  const res=raycaster.intersectObjects(arr);
+  if(!res.length) return;
+  const hit=res[0].object;
+  const p=hit.userData;
+  if(e.button===0){ // break
+    scene.remove(hit);
+    blocks.delete(key(p.x,p.y,p.z));
+  }else{            // place
+    const n=res[0].face.normal;
+    const x=p.x+n.x, y=p.y+n.y, z=p.z+n.z;
+    if(y<64) addBlock(x,y,z,'grass');
+  }
+};
+
+/* ---------- Character body ---------- */
+const charBody=new THREE.Group();
+const head=new THREE.Mesh(geoCube,new THREE.MeshLambertMaterial({color:0xffdbac}));
+head.position.y=1.6;
+head.scale.set(.4,.4,.4);
+const torso=new THREE.Mesh(geoCube,new THREE.MeshLambertMaterial({color:0x0066ff}));
+torso.position.y=1;
+torso.scale.set(.5,1,.25);
+charBody.add(head,torso);
+scene.add(charBody);
+
+/* ---------- Game Loop ---------- */
+function updatePlayer(){
+  const speed=.15;
+  let dx=0, dz=0;
+  if(keys['ArrowUp']||keys['KeyW']) dz=-1;
+  if(keys['ArrowDown']||keys['KeyS']) dz=1;
+  if(keys['ArrowLeft']||keys['KeyA']) dx=-1;
+  if(keys['ArrowRight']||keys['KeyD']) dx=1;
+  const dir=new THREE.Vector3(dx,0,dz).normalize().applyAxisAngle(new THREE.Vector3(0,1,0),camera.rotation.y);
+  px+=dir.x*speed; pz+=dir.z*speed;
+
+  velY-=.01; py+=velY;
+  const ground=getHeight(px,pz);
+  if(py<ground+1.75){ py=ground+1.75; velY=0; onGround=true;}
+  else onGround=false;
+
+  if(keys['Space'] && onGround) velY=0.25;
+
+  camera.position.set(px,py,pz);
+  charBody.position.set(px,py-1,pz);
+}
+
+/* ---------- Background Music ---------- */
+const audio=new Audio('https://cdn.jsdelivr.net/gh/AnalyticalGraphicsInc/cesium@master/Apps/SampleData/sounds/bing.ogg');
+audio.loop=true; audio.volume=.25;
+audio.play().catch(()=>{}); // allow autoplay
+
+/* ---------- Chunk loading ---------- */
+for(let cx=-2;cx<=2;cx++)
+  for(let cz=-2;cz<=2;cz++)
+    genChunk(cx,cz);
+
+/* ---------- Render Loop ---------- */
+function render(){
+  requestAnimationFrame(render);
+  updatePlayer();
+  renderer.render(scene,camera);
+}
+render();
 </script>
 </body>
 </html>
