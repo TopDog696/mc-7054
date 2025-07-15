@@ -3,108 +3,89 @@
 <head>
   <meta charset="UTF-8"/>
   <title>World Builder 2.0</title>
-  <!-- Three.js ES module (no deprecation warning) -->
-  <script type="module">
-    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-    window.THREE = THREE;
-  </script>
   <style>
     body{margin:0;overflow:hidden;font-family:Arial;background:#000}
-    #game, #mainMenu, #hamburger, #chatbotUI{position:absolute;top:0;left:0;width:100%;height:100%;display:none}
-    #game{display:block}
-    #mainMenu{background:#111;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;z-index:1000}
+    #mainMenu, #chatbotUI{position:absolute;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1rem;background:#111;color:#fff;z-index:1000}
+    #mainMenu{display:flex}
     .btn{padding:1rem 2rem;background:#0066ff;border:none;border-radius:.5rem;color:#fff;font-size:1.2rem;cursor:pointer}
     #hamburgerBtn{position:fixed;top:1rem;right:1rem;z-index:2000;background:rgba(0,0,0,.5);color:#fff;border:none;padding:.5rem;border-radius:.3rem;font-size:1.5rem}
     #menuPanel{position:fixed;top:3rem;right:1rem;background:rgba(0,0,0,.8);color:#fff;padding:1rem;border-radius:.5rem;display:none;flex-direction:column;gap:.5rem}
-    #chatbotUI{z-index:3000;background:rgba(0,0,0,.85);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
-    #chatbox{width:90%;max-width:600px;height:400px;overflow-y:auto;border:1px solid #555;padding:.5rem;background:#222}
-    #chatInput{display:flex;width:90%;max-width:600px;margin-top:.5rem}
-    #chatInput input{flex:1;padding:.5rem;border:none;border-radius:.3rem 0 0 .3rem}
-    #chatInput button{padding:.5rem .8rem;border:none;background:#0066ff;color:#fff;border-radius:0 .3rem .3rem 0;cursor:pointer}
-    #inventory{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);display:flex;gap:.3rem}
+    #inventory{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:4px;z-index:1000}
     .invSlot{width:50px;height:50px;border:2px solid #333;background:#111;border-radius:.3rem;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff}
     .invSlot.selected{border-color:#ff0}
     #progressBar{position:fixed;top:55%;left:50%;transform:translate(-50%,-50%);width:120px;height:8px;background:#333;border-radius:4px;display:none}
     #progressFill{width:0%;height:100%;background:#fff;border-radius:4px}
- 
-  
+    #crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:28px;pointer-events:none;text-shadow:0 0 4px #000}
   </style>
 </head>
 <body>
 
-<!-- ===== MAIN MENU ===== -->
+<!-- Main menu -->
 <div id="mainMenu">
   <h1>World Builder 2.0</h1>
   <button class="btn" id="btnStart">Start Game</button>
-  <button class="btn" id="btnAchievements">Achievements</button>
-  <button class="btn" id="btnShop">Shop</button>
+  <button class="btn" id="btnAchievements">Achievements (soon)</button>
+  <button class="btn" id="btnShop">Shop (soon)</button>
 </div>
 
-<!-- ===== GAME CANVAS ===== -->
+<!-- Game canvas -->
 <canvas id="game"></canvas>
+<div id="inventory"></div>
+<div id="crosshair">+</div>
+<div id="progressBar"><div id="progressFill"></div></div>
 
-<!-- ===== HAMBURGER ===== -->
+<!-- Hamburger -->
 <button id="hamburgerBtn">☰</button>
 <div id="menuPanel">
   <button onclick="pauseGame()">Pause / Resume</button>
   <button onclick="restartGame()">Restart</button>
   <label>Sound&nbsp;<input type="range" id="masterVol" min="0" max="1" step="0.1" value="0.3"></label>
   <button onclick="watchAd()">Watch Ad (100 coins)</button>
+  <button onclick="toggleChat()">Open Chatbot</button>
 </div>
-<div id="inventory" style="position:fixed;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:4px;z-index:1000"></div>
-<!-- ===== CHATBOT MODAL ===== -->
-<div id="chatbotUI" style="display:none">
-  <h2>Global Chatbot</h2>
-  <div id="chatbox"></div>
-  <div id="chatInput">
-    <input id="msg" type="text" placeholder="Type / paste image / video / audio" />
-    <button onclick="sendMsg()">Send</button>
+
+<!-- Chatbot modal -->
+<div id="chatbotUI">
+  <h2>Global Chatbot (10 languages)</h2>
+  <div id="chatbox" style="width:90%;max-width:600px;height:400px;overflow-y:auto;border:1px solid #555;padding:.5rem;background:#222"></div>
+  <div style="display:flex;width:90%;max-width:600px;margin-top:.5rem">
+    <input id="msg" type="text" placeholder="Type / upload media" style="flex:1;padding:.5rem;border:none;border-radius:.3rem 0 0 .3rem">
+    <button onclick="sendMsg()" style="padding:.5rem .8rem;border:none;background:#0066ff;color:#fff;border-radius:0 .3rem .3rem 0">Send</button>
   </div>
   <button onclick="toggleChat()">Close</button>
 </div>
 
 <script type="module">
-/* =========================================================
-   GAME CODE (ES modules, no Three.js warnings)
-   ========================================================= */
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-
-/* ---------- Three Setup ---------- */
-const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x87ceeb, 40, 150);
-const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 200);
-const renderer = new THREE.WebGLRenderer({canvas: document.getElementById('game'), antialias: true});
-renderer.setSize(innerWidth, innerHeight);
-document.body.appendChild(renderer.domElement);
+window.THREE = THREE; // global for brevity
 
 /* ---------- Materials ---------- */
 const blockTypes = {
-  grass:{color:0x4a7c59,name:'Grass'}, dirt:{color:0x8b4513,name:'Dirt'}, stone:{color:0x696969,name:'Stone'},
-  wood:{color:0x8b4513,name:'Wood'}, leaf:{color:0x2d9d2d,name:'Leaves'}, sand:{color:0xd2b48c,name:'Sand'},
-  brick:{color:0xb22222,name:'Brick'}, glass:{color:0xadd8e6,name:'Glass',transparent:true,opacity:.7}
+  grass:{color:0x4a7c59}, dirt:{color:0x8b4513}, stone:{color:0x696969},
+  wood:{color:0x8b4513}, leaf:{color:0x2d9d2d}, sand:{color:0xd2b48c},
+  brick:{color:0xb22222}, glass:{color:0xadd8e6,transparent:true,opacity:.7}
 };
 const geoCube = new THREE.BoxGeometry(1,1,1);
 const mats = {};
-Object.entries(blockTypes).forEach(([id, cfg]) => {
-  mats[id] = new THREE.MeshLambertMaterial({color: cfg.color, transparent: cfg.transparent || false, opacity: cfg.opacity || 1});
+Object.entries(blockTypes).forEach(([id,cfg])=>{
+  mats[id]=new THREE.MeshLambertMaterial({color:cfg.color,transparent:cfg.transparent||false,opacity:cfg.opacity||1});
 });
 
-/* ---------- Global Game State ---------- */
+/* ---------- Global State ---------- */
+let inventory={}, selected=0;
+Object.keys(blockTypes).forEach(k=>inventory[k]=k==='grass'?99:0);
 let px=0, py=25, pz=0, velY=0, onGround=false;
-let inventory = Object.fromEntries(Object.keys(blockTypes).map(k=>[k, k==='grass'?99:0]));
-let selected = 0;
-let digTarget = null, digProgress = 0;
 const blocks = new Map();
 const WORLD_RAD = 256, chunkSize = 32;
 function key(x,y,z){return `${x}|${y}|${z}`;}
-function getHeight(x,z){return Math.floor(Math.sin(x*.02)*Math.cos(z*.02)*8+Math.sin(x*.006)*Math.cos(z*.006)*20)+12;}
+function getHeight(x,z){return Math.floor(Math.sin(x*.02)*Math.cos(z*.02)*8+Math.sin(x*.006)*Math.cos(z*.006)*20))+12;}
 
 /* ---------- Build / Break ---------- */
 function addBlock(x,y,z,type){
   if(y<0||y>64) return;
   const k=key(x,y,z);
   if(blocks.has(k)) return;
-  const mesh = new THREE.Mesh(geoCube, mats[type]);
+  const mesh=new THREE.Mesh(geoCube,mats[type]);
   mesh.position.set(x,y,z);
   mesh.userData={type,x,y,z};
   blocks.set(k,mesh);
@@ -117,7 +98,7 @@ function removeBlock(block){
   inventory[p.type]=(inventory[p.type]||0)+1;
 }
 
-/* ---------- Terrain ---------- */
+/* ---------- Terrain Gen ---------- */
 function genChunk(cx,cz){
   const bx=cx*chunkSize, bz=cz*chunkSize;
   for(let x=0;x<chunkSize;x++){
@@ -126,7 +107,7 @@ function genChunk(cx,cz){
       const wz=bz+z;
       const h=getHeight(wx,wz);
       for(let y=-2;y<=h;y++){
-        const blk=y===h?'grass':y>=h-3?'dirt':'stone';
+        const blk=y===h?(Math.random()<.3?'grass':'dirt'):(y>=h-3?'dirt':'stone');
         addBlock(wx,y,wz,blk);
       }
       if(Math.random()<.02 && h>10) addTree(wx,h+1,wz);
@@ -152,19 +133,19 @@ for(let cx=-4;cx<=4;cx++)
 
 /* ---------- Lighting ---------- */
 scene.add(new THREE.AmbientLight(0xffffff,.7));
-const sunLight = new THREE.DirectionalLight(0xffffff,.9);
+const sunLight=new THREE.DirectionalLight(0xffffff,.9);
 sunLight.position.set(1,1,1);
 scene.add(sunLight);
 
 /* ---------- Player & Arms ---------- */
-const armGroup = new THREE.Group();
-const armGeo = new THREE.BoxGeometry(.25,1,.25);
-const armMat = new THREE.MeshLambertMaterial({color:0xffcc99});
-const leftArm = new THREE.Mesh(armGeo,armMat);
+const armGroup=new THREE.Group();
+const armGeo=new THREE.BoxGeometry(.25,1,.25);
+const armMat=new THREE.MeshLambertMaterial({color:0xffcc99});
+const leftArm=new THREE.Mesh(armGeo,armMat);
 leftArm.position.set(-.6,-.5,-1.2);
 leftArm.rotation.z=.5;
 armGroup.add(leftArm);
-const rightArm = new THREE.Mesh(armGeo,armMat);
+const rightArm=new THREE.Mesh(armGeo,armMat);
 rightArm.position.set(.6,-.5,-1.2);
 rightArm.rotation.z=-.5;
 armGroup.add(rightArm);
@@ -193,6 +174,16 @@ function renderHotbar(){
 }
 renderHotbar();
 
+/* ---------- Audio ---------- */
+const audio=new Audio('https://cdn.jsdelivr.net/gh/AnalyticalGraphicsInc/cesium@master/Apps/SampleData/sounds/bing.ogg');
+audio.loop=true;
+audio.volume=0.3;
+document.getElementById('masterVol').oninput=e=>audio.volume=e.target.value;
+document.getElementById('btnStart').onclick=()=>{
+  document.getElementById('mainMenu').style.display='none';
+  audio.play().catch(()=>{});
+};
+
 /* ---------- Raycast + Hold-to-Dig ---------- */
 const raycaster=new THREE.Raycaster();
 onmousedown=e=>{
@@ -216,7 +207,7 @@ onmousedown=e=>{
 };
 onmouseup=e=>isDigging=false;
 
-/* ---------- Mouse-look Rotation ---------- */
+/* ---------- Mouse-look ---------- */
 let mouseX=0, mouseY=0;
 document.addEventListener('mousemove',e=>{
   if(document.pointerLockElement===document.body){
@@ -227,32 +218,27 @@ document.addEventListener('mousemove',e=>{
   }
 });
 
-/* ---------- UI Helpers ---------- */
-function toggleChat(){ document.getElementById('chatbotUI').style.display=document.getElementById('chatbotUI').style.display==='none'?'flex':'none'; }
-document.getElementById('hamburgerBtn').onclick=()=>document.getElementById('menuPanel').style.display=document.getElementById('menuPanel').style.display==='none'?'flex':'none';
-document.getElementById('btnStart').onclick=()=>{document.getElementById('mainMenu').style.display='none';audio.play().catch(()=>{});};
-document.getElementById('masterVol').oninput=e=>audio.volume=e.target.value;
-function restartGame(){ location.reload(); }
-function pauseGame(){ /* placeholder */ }
-
-/* ---------- Multilingual Chatbot ---------- */
-const languages={
-  en:'English',es:'Español',fr:'Français',de:'Deutsch',zh:'中文',ja:'日本語',
-  ru:'Русский',pt:'Português',ar:'العربية',hi:'हिन्दी'
+/* ---------- UI helpers ---------- */
+window.pauseGame=()=>{};
+window.restartGame=()=>location.reload();
+window.watchAd=()=>alert('Ad watched! +100 coins (demo)');
+window.toggleChat=()=>{
+  const ui=document.getElementById('chatbotUI');
+  ui.style.display=ui.style.display==='none'?'flex':'none';
 };
-function sendMsg(){
+window.sendMsg=()=>{
   const msg=document.getElementById('msg').value.trim();
   if(!msg) return;
-  const box=document.getElementById('chatbox');
   const lang=navigator.language.slice(0,2);
-  const reply=lang==='zh' ? '你好！' : lang==='es' ? '¡Hola!' : 'Hello!';
-  box.innerHTML+=`<div><b>${languages[lang]||'User'}:</b> ${msg}</div><div><b>Bot:</b> ${reply}</div>`;
+  const replies={en:'Hello!', es:'¡Hola!', fr:'Salut!', de:'Hallo!', zh:'你好!', ja:'こんにちは!', ru:'Привет!', pt:'Olá!', ar:'مرحبا!', hi:'नमस्ते!'};
+  const box=document.getElementById('chatbox');
+  box.innerHTML+=`<div><b>You:</b> ${msg}</div><div><b>Bot:</b> ${replies[lang]||'Hello!'}</div>`;
   box.scrollTop=box.scrollHeight;
   document.getElementById('msg').value='';
-}
-document.getElementById('msg').addEventListener('keydown',e=>{if(e.key==='Enter') sendMsg();});
+};
+document.addEventListener('contextmenu',e=>e.preventDefault());
 
-/* ---------- Game Loop ---------- */
+/* ---------- Game Loop ---------- -->
 function update(){
   requestAnimationFrame(update);
 
@@ -273,19 +259,19 @@ function update(){
   if(keys['Space'] && onGround) velY=0.3;
 
   camera.position.set(px,py,pz);
+  armGroup.position.set(px,py-1,pz);
 
-  /* Hold-to-Dig */
+  /* Hold-to-dig */
   if(isDigging){
     raycaster.set(camera.position,new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion));
     const res=raycaster.intersectObjects([...blocks.values()]);
     if(res.length){
-      digTarget=res[0].object;
       digProgress+=0.05;
-      document.getElementById('progressBar').style.width=(digProgress*100)+'%';
+      document.getElementById('progressFill').style.width=(digProgress*100)+'%';
       document.getElementById('progress').style.display='block';
       if(digProgress>=1){
-        removeBlock(digTarget);
-        digProgress=0; digTarget=null;
+        removeBlock(res[0].object);
+        digProgress=0;
         document.getElementById('progress').style.display='none';
       }
     }else{
