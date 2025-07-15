@@ -5,7 +5,7 @@
   <title>World Builder 2.0</title>
   <style>
     body{margin:0;overflow:hidden;font-family:Arial;background:#000}
-    #mainMenu, #shopModal, #themesModal, #chatbotUI{position:absolute;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1rem;background:#111;color:#fff;z-index:1000}
+    #mainMenu, #shopModal, #themesModal, #achievementsModal, #chatbotUI{position:absolute;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1rem;background:#111;color:#fff;z-index:1000}
     #mainMenu{display:flex}
     .btn{padding:1rem 2rem;background:#0066ff;border:none;border-radius:.5rem;color:#fff;font-size:1.2rem;cursor:pointer}
     .closeBtn{margin-left:auto;background:#f44336}
@@ -16,7 +16,7 @@
     .invSlot.selected{border-color:#ff0}
     #progressBar{position:fixed;top:55%;left:50%;transform:translate(-50%,-50%);width:120px;height:8px;background:#333;border-radius:4px;display:none}
     #progressFill{width:0%;height:100%;background:#fff;border-radius:4px}
-    .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.8);color:#fff;z-index:2000;justify-content:center;align-items:center}
+    .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.8);color:#fff;justify-content:center;align-items:center;z-index:2000}
     .modal-content{background:#222;padding:2rem;border-radius:1rem;max-width:600px;max-height:80%;overflow-y:auto}
     .theme{display:flex;justify-content:space-between;margin:.5rem 0;padding:.5rem;border:1px solid #444;border-radius:.5rem}
     .theme.free{background:#004d00} .theme.paid{background:#8b0000}
@@ -24,22 +24,22 @@
 </head>
 <body>
 
-<!-- MAIN MENU -->
+<!-- Main menu -->
 <div id="mainMenu">
   <h1>World Builder 2.0</h1>
   <button class="btn" id="btnStart">Start Game</button>
   <button class="btn" id="btnAchievements">Achievements</button>
   <button class="btn" id="btnShop">Shop</button>
   <button class="btn" id="btnThemes">Themes</button>
-  <p id="coinsDisplay">Mine Coins: <span id="coins">0</span></p>
+  <p>Mine Coins: <span id="coins">0</span></p>
 </div>
 
-<!-- GAME CANVAS -->
+<!-- Game canvas -->
 <canvas id="game"></canvas>
 <div id="inventory"></div>
 <div id="progressBar"><div id="progressFill"></div></div>
 
-<!-- HAMBURGER -->
+<!-- Hamburger -->
 <button id="hamburgerBtn">☰</button>
 <div id="menuPanel">
   <button onclick="pauseGame()">Pause / Resume</button>
@@ -48,17 +48,16 @@
   <button onclick="toggleChat()">Open Chatbot</button>
 </div>
 
-<!-- SHOP MODAL -->
+<!-- Shop -->
 <div id="shopModal" class="modal">
   <div class="modal-content">
     <button class="closeBtn" onclick="closeModal('shopModal')">×</button>
     <h2>Shop</h2>
-    <p>Buy Mine Coins or skins</p>
-    <button onclick="buyCoins(100,0)">100 coins – FREE (ad)</button>
+    <button onclick="buyCoins(100)">100 coins – FREE (ad)</button>
   </div>
 </div>
 
-<!-- THEMES MODAL -->
+<!-- Themes -->
 <div id="themesModal" class="modal">
   <div class="modal-content">
     <button class="closeBtn" onclick="closeModal('themesModal')">×</button>
@@ -67,7 +66,7 @@
   </div>
 </div>
 
-<!-- ACHIEVEMENTS MODAL -->
+<!-- Achievements -->
 <div id="achievementsModal" class="modal">
   <div class="modal-content">
     <button class="closeBtn" onclick="closeModal('achievementsModal')">×</button>
@@ -76,7 +75,7 @@
   </div>
 </div>
 
-<!-- CHATBOT -->
+<!-- Chatbot -->
 <div id="chatbotUI" class="modal">
   <div class="modal-content">
     <button class="closeBtn" onclick="toggleChat()">×</button>
@@ -103,11 +102,10 @@ Object.entries(blockTypes).forEach(([id,cfg])=>{
   mats[id]=new THREE.MeshLambertMaterial({color:cfg.color,transparent:cfg.transparent||false,opacity:cfg.opacity||1});
 });
 
-/* ---------- LOCAL STORAGE ---------- */
+/* ---------- STORAGE ---------- */
 let coins = Number(localStorage.getItem('coins')) || 0;
 let inventory = JSON.parse(localStorage.getItem('inventory')) || {};
 Object.keys(blockTypes).forEach(k=>inventory[k]=inventory[k]||0);
-let selected = 0;
 let achievements = JSON.parse(localStorage.getItem('achievements')) || {};
 const ACH_LIST = [
   'First Block','First Tree','First Dig','First Jump','First Place',
@@ -117,10 +115,6 @@ const ACH_LIST = [
   'Reach Y=50','Reach Y=100','Reach Y=200','Watch 5 Ads','Spend 1000 Coins'
 ];
 ACH_LIST.forEach(a=>achievements[a]=achievements[a]||false);
-
-/* ---------- UTILS ---------- */
-function key(x,y,z){return `${x}|${y}|${z}`;}
-function getHeight(x,z){return Math.floor(Math.sin(x*.02)*Math.cos(z*.02)*8+Math.sin(x*.006)*Math.cos(z*.006)*20))+12;}
 function saveData(){
   localStorage.setItem('coins',coins);
   localStorage.setItem('inventory',JSON.stringify(inventory));
@@ -130,7 +124,7 @@ function award(ach){
   if(!achievements[ach]){
     achievements[ach]=true;
     saveData();
-    alert('🏆 Achievement Unlocked: '+ach);
+    alert('🏆 '+ach);
   }
 }
 function updateCoins(val){
@@ -138,9 +132,9 @@ function updateCoins(val){
   document.getElementById('coins').textContent=coins;
   saveData();
 }
-
-/* ---------- DOM ---------- */
 document.getElementById('coins').textContent=coins;
+
+/* ---------- THREE ---------- */
 const scene = new THREE.Scene(); scene.fog=new THREE.Fog(0x87ceeb,40,150);
 const camera = new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,200);
 const renderer = new THREE.WebGLRenderer({canvas:document.getElementById('game'),antialias:true});
@@ -149,6 +143,8 @@ document.body.appendChild(renderer.domElement);
 
 /* ---------- WORLD ---------- */
 const blocks=new Map(), WORLD_RAD=256, chunkSize=32;
+function key(x,y,z){return `${x}|${y}|${z}`;}
+function getHeight(x,z){return Math.floor(Math.sin(x*.02)*Math.cos(z*.02)*8+Math.sin(x*.006)*Math.cos(z*.006)*20))+12;}
 function addBlock(x,y,z,type){
   if(y<0||y>64) return;
   const k=key(x,y,z);
@@ -188,7 +184,7 @@ scene.add(new THREE.AmbientLight(0xffffff,.7));
 const sunLight=new THREE.DirectionalLight(0xffffff,.9);
 sunLight.position.set(1,1,1); scene.add(sunLight);
 
-/* ---------- PLAYER ---------- -->
+/* ---------- PLAYER ---------- */
 let px=0, py=25, pz=0, velY=0, onGround=false;
 const armGroup=new THREE.Group();
 const armGeo=new THREE.BoxGeometry(.25,1,.25);
@@ -197,7 +193,7 @@ const leftArm=new THREE.Mesh(armGeo,armMat); leftArm.position.set(-.6,-.5,-1.2);
 const rightArm=new THREE.Mesh(armGeo,armMat); rightArm.position.set(.6,-.5,-1.2); rightArm.rotation.z=-.5;
 armGroup.add(leftArm,rightArm); camera.add(armGroup); scene.add(camera);
 
-/* ---------- CONTROLS ---------- */
+/* ---------- CONTROLS ---------- -->
 const keys={}, raycaster=new THREE.Raycaster();
 let digTarget=null, digProgress=0;
 function renderHotbar(){
@@ -207,12 +203,13 @@ function renderHotbar(){
   Object.entries(blockTypes).forEach(([id],idx)=>{
     const slot=document.createElement('div');
     slot.className='invSlot'+(idx===selected?' selected':'');
-    slot.style.backgroundColor='#'+blockTypes[id].color.toString(16).padStart(6,'0');
+    slot.style.background='#'+blockTypes[id].color.toString(16).padStart(6,'0');
     slot.textContent=inventory[id]||0;
     hb.appendChild(slot);
   });
 }
 renderHotbar();
+
 document.addEventListener('keydown',e=>keys[e.code]=true);
 document.addEventListener('keyup',e=>keys[e.code]=false);
 window.addEventListener('wheel',e=>{
@@ -231,10 +228,7 @@ onmousedown=e=>{
   if(e.button===0){
     raycaster.set(camera.position,new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion));
     const res=raycaster.intersectObjects([...blocks.values()]);
-    if(res.length){
-      digTarget=res[0].object;
-      digProgress=0;
-    }
+    if(res.length) digTarget=res[0].object;
   }else if(e.button===2){
     const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
     raycaster.set(camera.position,dir);
@@ -254,6 +248,7 @@ onmousedown=e=>{
   }
 };
 onmouseup=()=>{digTarget=null;digProgress=0;};
+
 function update(){
   if(document.getElementById('mainMenu').style.display!=='none') return;
   const speed=0.2;
@@ -285,13 +280,15 @@ function update(){
       digTarget=null;
       if(bar) bar.style.display='none';
     }
+  }else{
+    const bar=document.getElementById('progress');
+    if(bar) bar.style.display='none';
   }
   renderer.render(scene,camera);
 }
 requestAnimationFrame(update);
 
-/* ---------- MODALS / UI ---------- */
-document.getElementById('btnStart').onclick=()=>{document.getElementById('mainMenu').style.display='none';audio.play().catch(()=>{});};
+/* ---------- MODALS ---------- */
 const themes=[
   {name:'Classic',free:true,color:'#87ceeb'},
   {name:'Night',free:true,color:'#001'},
@@ -305,7 +302,14 @@ const themes=[
   {name:'Gold',free:false,price:6400,color:'#ffd700'}
 ];
 function closeModal(id){document.getElementById(id).style.display='none';}
+document.getElementById('btnStart').onclick=()=>{document.getElementById('mainMenu').style.display='none';};
 document.getElementById('btnShop').onclick=()=>document.getElementById('shopModal').style.display='flex';
+document.getElementById('btnAchievements').onclick=()=>{
+  const list=document.getElementById('achievementsList');
+  list.innerHTML='';
+  ACH_LIST.forEach(a=>list.innerHTML+=`<li>${achievements[a]?'✅':'❌'} ${a}</li>`);
+  document.getElementById('achievementsModal').style.display='flex';
+};
 document.getElementById('btnThemes').onclick=()=>{
   const list=document.getElementById('themesList');
   list.innerHTML='';
@@ -318,27 +322,14 @@ document.getElementById('btnThemes').onclick=()=>{
   });
   document.getElementById('themesModal').style.display='flex';
 };
-document.getElementById('btnAchievements').onclick=()=>{
-  const list=document.getElementById('achievementsList');
-  list.innerHTML='';
-  ACH_LIST.forEach(a=>{
-    const li=document.createElement('li');
-    li.textContent=(achievements[a]?'✅':'❌')+' '+a;
-    list.appendChild(li);
-  });
-  document.getElementById('achievementsModal').style.display='flex';
-};
-window.buyCoins=()=>{updateCoins(100); alert('+100 coins'); saveData();};
+window.buyCoins=()=>{updateCoins(100);alert('+100 coins');};
 window.buyTheme=i=>{
   const t=themes[i];
-  if(coins>=t.price){
-    updateCoins(-t.price);
-    alert('Theme '+t.name+' unlocked!');
-  }else alert('Not enough coins!');
+  if(coins>=t.price){updateCoins(-t.price);alert('Theme '+t.name+' unlocked!');}else alert('Not enough coins!');
 };
-window.watchAd=()=>{updateCoins(50); alert('+50 coins'); award('Watch 5 Ads'); saveData();};
+window.watchAd=()=>{updateCoins(50); award('Watch 5 Ads');};
 window.toggleChat=()=>document.getElementById('chatbotUI').style.display=document.getElementById('chatbotUI').style.display==='none'?'flex':'none';
-window.sendMsg=()=>{};
+window.pauseGame=window.restartGame=()=>{};
 </script>
 </body>
 </html>
