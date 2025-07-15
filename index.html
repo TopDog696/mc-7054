@@ -5,9 +5,10 @@
   <title>World Builder 2.0</title>
   <style>
     body{margin:0;overflow:hidden;font-family:Arial;background:#000}
-    #mainMenu, #chatbotUI{position:absolute;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1rem;background:#111;color:#fff;z-index:1000}
+    #mainMenu, #shopModal, #themesModal, #chatbotUI{position:absolute;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1rem;background:#111;color:#fff;z-index:1000}
     #mainMenu{display:flex}
     .btn{padding:1rem 2rem;background:#0066ff;border:none;border-radius:.5rem;color:#fff;font-size:1.2rem;cursor:pointer}
+    .closeBtn{margin-left:auto;background:#f44336}
     #hamburgerBtn{position:fixed;top:1rem;right:1rem;z-index:2000;background:rgba(0,0,0,.5);color:#fff;border:none;padding:.5rem;border-radius:.3rem;font-size:1.5rem}
     #menuPanel{position:fixed;top:3rem;right:1rem;background:rgba(0,0,0,.8);color:#fff;padding:1rem;border-radius:.5rem;display:none;flex-direction:column;gap:.5rem}
     #inventory{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:4px;z-index:1000}
@@ -15,55 +16,82 @@
     .invSlot.selected{border-color:#ff0}
     #progressBar{position:fixed;top:55%;left:50%;transform:translate(-50%,-50%);width:120px;height:8px;background:#333;border-radius:4px;display:none}
     #progressFill{width:0%;height:100%;background:#fff;border-radius:4px}
-    #crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:28px;pointer-events:none;text-shadow:0 0 4px #000}
+    .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.8);color:#fff;z-index:2000;justify-content:center;align-items:center}
+    .modal-content{background:#222;padding:2rem;border-radius:1rem;max-width:600px;max-height:80%;overflow-y:auto}
+    .theme{display:flex;justify-content:space-between;margin:.5rem 0;padding:.5rem;border:1px solid #444;border-radius:.5rem}
+    .theme.free{background:#004d00} .theme.paid{background:#8b0000}
   </style>
 </head>
 <body>
 
-<!-- Main menu -->
+<!-- MAIN MENU -->
 <div id="mainMenu">
   <h1>World Builder 2.0</h1>
   <button class="btn" id="btnStart">Start Game</button>
-  <button class="btn" id="btnAchievements">Achievements (soon)</button>
-  <button class="btn" id="btnShop">Shop (soon)</button>
+  <button class="btn" id="btnAchievements">Achievements</button>
+  <button class="btn" id="btnShop">Shop</button>
+  <button class="btn" id="btnThemes">Themes</button>
+  <p id="coinsDisplay">Mine Coins: <span id="coins">0</span></p>
 </div>
 
-<!-- Game canvas -->
+<!-- GAME CANVAS -->
 <canvas id="game"></canvas>
 <div id="inventory"></div>
-  <!-- progress bar for hold-to-dig -->
-<div id="progress" style="position:fixed;top:55%;left:50%;transform:translate(-50%,-50%);width:120px;height:8px;background:#333;border-radius:4px;display:none">
-  <div id="progressFill" style="height:100%;width:0%;background:#fff;border-radius:4px"></div>
-</div>
-<div id="crosshair">+</div>
 <div id="progressBar"><div id="progressFill"></div></div>
 
-<!-- Hamburger -->
+<!-- HAMBURGER -->
 <button id="hamburgerBtn">☰</button>
 <div id="menuPanel">
   <button onclick="pauseGame()">Pause / Resume</button>
   <button onclick="restartGame()">Restart</button>
-  <label>Sound&nbsp;<input type="range" id="masterVol" min="0" max="1" step="0.1" value="0.3"></label>
-  <button onclick="watchAd()">Watch Ad (100 coins)</button>
+  <button onclick="watchAd()">Watch Ad (+50 coins)</button>
   <button onclick="toggleChat()">Open Chatbot</button>
 </div>
 
-<!-- Chatbot modal -->
-<div id="chatbotUI">
-  <h2>Global Chatbot (10 languages)</h2>
-  <div id="chatbox" style="width:90%;max-width:600px;height:400px;overflow-y:auto;border:1px solid #555;padding:.5rem;background:#222"></div>
-  <div style="display:flex;width:90%;max-width:600px;margin-top:.5rem">
-    <input id="msg" type="text" placeholder="Type / upload media" style="flex:1;padding:.5rem;border:none;border-radius:.3rem 0 0 .3rem">
-    <button onclick="sendMsg()" style="padding:.5rem .8rem;border:none;background:#0066ff;color:#fff;border-radius:0 .3rem .3rem 0">Send</button>
+<!-- SHOP MODAL -->
+<div id="shopModal" class="modal">
+  <div class="modal-content">
+    <button class="closeBtn" onclick="closeModal('shopModal')">×</button>
+    <h2>Shop</h2>
+    <p>Buy Mine Coins or skins</p>
+    <button onclick="buyCoins(100,0)">100 coins – FREE (ad)</button>
   </div>
-  <button onclick="toggleChat()">Close</button>
+</div>
+
+<!-- THEMES MODAL -->
+<div id="themesModal" class="modal">
+  <div class="modal-content">
+    <button class="closeBtn" onclick="closeModal('themesModal')">×</button>
+    <h2>Select Theme</h2>
+    <div id="themesList"></div>
+  </div>
+</div>
+
+<!-- ACHIEVEMENTS MODAL -->
+<div id="achievementsModal" class="modal">
+  <div class="modal-content">
+    <button class="closeBtn" onclick="closeModal('achievementsModal')">×</button>
+    <h2>Achievements</h2>
+    <ul id="achievementsList"></ul>
+  </div>
+</div>
+
+<!-- CHATBOT -->
+<div id="chatbotUI" class="modal">
+  <div class="modal-content">
+    <button class="closeBtn" onclick="toggleChat()">×</button>
+    <h2>Global Chatbot</h2>
+    <div id="chatbox"></div>
+    <input id="msg" type="text" placeholder="Type / upload media">
+    <button onclick="sendMsg()">Send</button>
+  </div>
 </div>
 
 <script type="module">
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-window.THREE = THREE; // global for brevity
+window.THREE = THREE;
 
-/* ---------- Materials ---------- */
+/* ---------- CONFIG ---------- */
 const blockTypes = {
   grass:{color:0x4a7c59}, dirt:{color:0x8b4513}, stone:{color:0x696969},
   wood:{color:0x8b4513}, leaf:{color:0x2d9d2d}, sand:{color:0xd2b48c},
@@ -75,16 +103,52 @@ Object.entries(blockTypes).forEach(([id,cfg])=>{
   mats[id]=new THREE.MeshLambertMaterial({color:cfg.color,transparent:cfg.transparent||false,opacity:cfg.opacity||1});
 });
 
-/* ---------- Global State ---------- */
-let inventory={}, selected=0;
-Object.keys(blockTypes).forEach(k=>inventory[k]=k==='grass'?99:0);
-let px=0, py=25, pz=0, velY=0, onGround=false;
-const blocks = new Map();
-const WORLD_RAD = 256, chunkSize = 32;
+/* ---------- LOCAL STORAGE ---------- */
+let coins = Number(localStorage.getItem('coins')) || 0;
+let inventory = JSON.parse(localStorage.getItem('inventory')) || {};
+Object.keys(blockTypes).forEach(k=>inventory[k]=inventory[k]||0);
+let selected = 0;
+let achievements = JSON.parse(localStorage.getItem('achievements')) || {};
+const ACH_LIST = [
+  'First Block','First Tree','First Dig','First Jump','First Place',
+  '10 Blocks','50 Blocks','100 Blocks','1000 Blocks','10 Trees','50 Trees',
+  '100 Trees','Mine 10 Stone','Mine 50 Stone','Mine 100 Stone',
+  'Build 10 Glass','Build 50 Glass','100 Glass','Walk 100 Steps','Walk 1000 Steps',
+  'Reach Y=50','Reach Y=100','Reach Y=200','Watch 5 Ads','Spend 1000 Coins'
+];
+ACH_LIST.forEach(a=>achievements[a]=achievements[a]||false);
+
+/* ---------- UTILS ---------- */
 function key(x,y,z){return `${x}|${y}|${z}`;}
 function getHeight(x,z){return Math.floor(Math.sin(x*.02)*Math.cos(z*.02)*8+Math.sin(x*.006)*Math.cos(z*.006)*20))+12;}
+function saveData(){
+  localStorage.setItem('coins',coins);
+  localStorage.setItem('inventory',JSON.stringify(inventory));
+  localStorage.setItem('achievements',JSON.stringify(achievements));
+}
+function award(ach){
+  if(!achievements[ach]){
+    achievements[ach]=true;
+    saveData();
+    alert('🏆 Achievement Unlocked: '+ach);
+  }
+}
+function updateCoins(val){
+  coins+=val;
+  document.getElementById('coins').textContent=coins;
+  saveData();
+}
 
-/* ---------- Build / Break ---------- */
+/* ---------- DOM ---------- */
+document.getElementById('coins').textContent=coins;
+const scene = new THREE.Scene(); scene.fog=new THREE.Fog(0x87ceeb,40,150);
+const camera = new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,200);
+const renderer = new THREE.WebGLRenderer({canvas:document.getElementById('game'),antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+document.body.appendChild(renderer.domElement);
+
+/* ---------- WORLD ---------- */
+const blocks=new Map(), WORLD_RAD=256, chunkSize=32;
 function addBlock(x,y,z,type){
   if(y<0||y>64) return;
   const k=key(x,y,z);
@@ -95,14 +159,6 @@ function addBlock(x,y,z,type){
   blocks.set(k,mesh);
   scene.add(mesh);
 }
-function removeBlock(block){
-  const p=block.userData;
-  blocks.delete(key(p.x,p.y,p.z));
-  scene.remove(block);
-  inventory[p.type]=(inventory[p.type]||0)+1;
-}
-
-/* ---------- Terrain Gen ---------- */
 function genChunk(cx,cz){
   const bx=cx*chunkSize, bz=cz*chunkSize;
   for(let x=0;x<chunkSize;x++){
@@ -111,11 +167,10 @@ function genChunk(cx,cz){
       const wz=bz+z;
       const h=getHeight(wx,wz);
       for(let y=-2;y<=h;y++){
-        const blk=y===h?(Math.random()<.3?'grass':'dirt'):(y>=h-3?'dirt':'stone');
+        const blk=y===h?'grass':y>=h-3?'dirt':'stone';
         addBlock(wx,y,wz,blk);
       }
       if(Math.random()<.02 && h>10) addTree(wx,h+1,wz);
-      else if(Math.random()<.15 && h>5) addGrass(wx,h+1,wz);
     }
   }
 }
@@ -127,73 +182,60 @@ function addTree(x,y,z){
         if(Math.abs(dx)+Math.abs(dz)+Math.abs(dy-5.5)<4)
           addBlock(x+dx,y+dy,z+dz,'leaf');
 }
-function addGrass(x,y,z){
-  if(!blocks.has(key(x,y-1,z))) return;
-  addBlock(x,y,z,'grass');
-}
-for(let cx=-4;cx<=4;cx++)
-  for(let cz=-4;cz<=4;cz++)
-    genChunk(cx,cz);
+for(let cx=-4;cx<=4;cx++) for(let cz=-4;cz<=4;cz++) genChunk(cx,cz);
 
-/* ---------- Lighting ---------- */
 scene.add(new THREE.AmbientLight(0xffffff,.7));
 const sunLight=new THREE.DirectionalLight(0xffffff,.9);
-sunLight.position.set(1,1,1);
-scene.add(sunLight);
+sunLight.position.set(1,1,1); scene.add(sunLight);
 
-/* ---------- Player & Arms ---------- */
+/* ---------- PLAYER ---------- -->
+let px=0, py=25, pz=0, velY=0, onGround=false;
 const armGroup=new THREE.Group();
 const armGeo=new THREE.BoxGeometry(.25,1,.25);
 const armMat=new THREE.MeshLambertMaterial({color:0xffcc99});
-const leftArm=new THREE.Mesh(armGeo,armMat);
-leftArm.position.set(-.6,-.5,-1.2);
-leftArm.rotation.z=.5;
-armGroup.add(leftArm);
-const rightArm=new THREE.Mesh(armGeo,armMat);
-rightArm.position.set(.6,-.5,-1.2);
-rightArm.rotation.z=-.5;
-armGroup.add(rightArm);
-camera.add(armGroup);
-scene.add(camera);
+const leftArm=new THREE.Mesh(armGeo,armMat); leftArm.position.set(-.6,-.5,-1.2); leftArm.rotation.z=.5;
+const rightArm=new THREE.Mesh(armGeo,armMat); rightArm.position.set(.6,-.5,-1.2); rightArm.rotation.z=-.5;
+armGroup.add(leftArm,rightArm); camera.add(armGroup); scene.add(camera);
 
-/* ---------- Controls ---------- */
-const keys={};
-let isDigging=false;
-onkeydown=e=>keys[e.code]=true;
-onkeyup  =e=>keys[e.code]=false;
-window.addEventListener('wheel',e=>{
-  selected=(selected+(e.deltaY>0?1:-1)+Object.keys(blockTypes).length)%Object.keys(blockTypes).length;
-  renderHotbar();
-});
+/* ---------- CONTROLS ---------- */
+const keys={}, raycaster=new THREE.Raycaster();
+let digTarget=null, digProgress=0;
 function renderHotbar(){
   const hb=document.getElementById('inventory');
+  if(!hb) return;
   hb.innerHTML='';
-  Object.entries(blockTypes).forEach(([id,cfg],idx)=>{
+  Object.entries(blockTypes).forEach(([id],idx)=>{
     const slot=document.createElement('div');
     slot.className='invSlot'+(idx===selected?' selected':'');
-    slot.style.backgroundColor='#'+cfg.color.toString(16).padStart(6,'0');
+    slot.style.backgroundColor='#'+blockTypes[id].color.toString(16).padStart(6,'0');
     slot.textContent=inventory[id]||0;
     hb.appendChild(slot);
   });
 }
 renderHotbar();
-
-/* ---------- Audio ---------- */
-const audio=new Audio('https://cdn.jsdelivr.net/gh/AnalyticalGraphicsInc/cesium@master/Apps/SampleData/sounds/bing.ogg');
-audio.loop=true;
-audio.volume=0.3;
-document.getElementById('masterVol').oninput=e=>audio.volume=e.target.value;
-document.getElementById('btnStart').onclick=()=>{
-  document.getElementById('mainMenu').style.display='none';
-  audio.play().catch(()=>{});
-};
-
-/* ---------- Raycast + Hold-to-Dig ---------- */
-const raycaster=new THREE.Raycaster();
+document.addEventListener('keydown',e=>keys[e.code]=true);
+document.addEventListener('keyup',e=>keys[e.code]=false);
+window.addEventListener('wheel',e=>{
+  selected=(selected+(e.deltaY>0?1:-1)+Object.keys(blockTypes).length)%Object.keys(blockTypes).length;
+  renderHotbar();
+});
+document.addEventListener('click',()=>document.body.requestPointerLock());
+document.addEventListener('mousemove',e=>{
+  if(document.pointerLockElement===document.body){
+    camera.rotation.y-=e.movementX*0.002;
+    camera.rotation.x-=e.movementY*0.002;
+  }
+});
 onmousedown=e=>{
   if(document.pointerLockElement!==document.body) return;
-  if(e.button===0) isDigging=true;
-  else if(e.button===2){
+  if(e.button===0){
+    raycaster.set(camera.position,new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion));
+    const res=raycaster.intersectObjects([...blocks.values()]);
+    if(res.length){
+      digTarget=res[0].object;
+      digProgress=0;
+    }
+  }else if(e.button===2){
     const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
     raycaster.set(camera.position,dir);
     const res=raycaster.intersectObjects([...blocks.values()]);
@@ -204,90 +246,99 @@ onmousedown=e=>{
       if(inventory[typeList[selected]]>0 && y<64){
         addBlock(x,y,z,typeList[selected]);
         inventory[typeList[selected]]--;
+        award('First Place');
+        saveData();
         renderHotbar();
       }
     }
   }
 };
-onmouseup=e=>isDigging=false;
-
-/* ---------- Mouse-look ---------- */
-let mouseX=0, mouseY=0;
-document.addEventListener('mousemove',e=>{
-  if(document.pointerLockElement===document.body){
-    mouseX-=e.movementX*0.002;
-    mouseY-=e.movementY*0.002;
-    mouseY=Math.max(-Math.PI/2,Math.min(Math.PI/2,mouseY));
-    camera.rotation.set(mouseY,mouseX,0);
-  }
-});
-
-/* ---------- UI helpers ---------- */
-window.pauseGame=()=>{};
-window.restartGame=()=>location.reload();
-window.watchAd=()=>alert('Ad watched! +100 coins (demo)');
-window.toggleChat=()=>{
-  const ui=document.getElementById('chatbotUI');
-  ui.style.display=ui.style.display==='none'?'flex':'none';
-};
-window.sendMsg=()=>{
-  const msg=document.getElementById('msg').value.trim();
-  if(!msg) return;
-  const lang=navigator.language.slice(0,2);
-  const replies={en:'Hello!', es:'¡Hola!', fr:'Salut!', de:'Hallo!', zh:'你好!', ja:'こんにちは!', ru:'Привет!', pt:'Olá!', ar:'مرحبا!', hi:'नमस्ते!'};
-  const box=document.getElementById('chatbox');
-  box.innerHTML+=`<div><b>You:</b> ${msg}</div><div><b>Bot:</b> ${replies[lang]||'Hello!'}</div>`;
-  box.scrollTop=box.scrollHeight;
-  document.getElementById('msg').value='';
-};
-document.addEventListener('contextmenu',e=>e.preventDefault());
-
-/* ---------- Game Loop ---------- -->
+onmouseup=()=>{digTarget=null;digProgress=0;};
 function update(){
-  requestAnimationFrame(update);
-
-  /* Movement */
+  if(document.getElementById('mainMenu').style.display!=='none') return;
   const speed=0.2;
   let dx=0,dz=0;
-  if(keys['KeyW']||keys['ArrowUp'])    dz=-1;
-  if(keys['KeyS']||keys['ArrowDown'])  dz=1;
-  if(keys['KeyA']||keys['ArrowLeft'])  dx=-1;
+  if(keys['KeyW']||keys['ArrowUp']) dz=-1;
+  if(keys['KeyS']||keys['ArrowDown']) dz=1;
+  if(keys['KeyA']||keys['ArrowLeft']) dx=-1;
   if(keys['KeyD']||keys['ArrowRight']) dx=1;
-  const dir=new THREE.Vector3(dx,0,dz).normalize().applyAxisAngle(new THREE.Vector3(0,1,0),mouseX);
+  const dir=new THREE.Vector3(dx,0,dz).normalize().applyAxisAngle(new THREE.Vector3(0,1,0),camera.rotation.y);
   px+=dir.x*speed; pz+=dir.z*speed;
-
-  velY-=0.015;
-  py+=velY;
+  velY-=0.015; py+=velY;
   const ground=getHeight(px,pz)+1.75;
   if(py<ground){py=ground;velY=0;onGround=true;}else onGround=false;
   if(keys['Space'] && onGround) velY=0.3;
-
   camera.position.set(px,py,pz);
   armGroup.position.set(px,py-1,pz);
-
-  /* Hold-to-dig */
-  if(isDigging){
-    raycaster.set(camera.position,new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion));
-    const res=raycaster.intersectObjects([...blocks.values()]);
-    if(res.length){
-      digProgress+=0.05;
-      document.getElementById('progressFill').style.width=(digProgress*100)+'%';
-      document.getElementById('progress').style.display='block';
-      if(digProgress>=1){
-        removeBlock(res[0].object);
-        digProgress=0;
-        document.getElementById('progress').style.display='none';
-      }
-    }else{
-      digProgress=0;
+  if(digTarget){
+    digProgress+=0.05;
+    const bar=document.getElementById('progress');
+    const fill=document.getElementById('progressFill');
+    if(bar&&fill){
+      bar.style.display='block';
+      fill.style.width=(digProgress*100)+'%';
     }
-  }else{
-    document.getElementById('progress').style.display='none';
+    if(digProgress>=1){
+      removeBlock(digTarget);
+      award('First Dig');
+      saveData();
+      digTarget=null;
+      if(bar) bar.style.display='none';
+    }
   }
-
   renderer.render(scene,camera);
 }
-update();
+requestAnimationFrame(update);
+
+/* ---------- MODALS / UI ---------- */
+document.getElementById('btnStart').onclick=()=>{document.getElementById('mainMenu').style.display='none';audio.play().catch(()=>{});};
+const themes=[
+  {name:'Classic',free:true,color:'#87ceeb'},
+  {name:'Night',free:true,color:'#001'},
+  {name:'Retro',free:true,color:'#ff69b4'},
+  {name:'Forest',free:false,price:100,color:'#228b22'},
+  {name:'Desert',free:false,price:200,color:'#b8860b'},
+  {name:'Ocean',free:false,price:400,color:'#1e90ff'},
+  {name:'Space',free:false,price:800,color:'#000033'},
+  {name:'Candy',free:false,price:1600,color:'#ff1493'},
+  {name:'Neon',free:false,price:3200,color:'#0ff'},
+  {name:'Gold',free:false,price:6400,color:'#ffd700'}
+];
+function closeModal(id){document.getElementById(id).style.display='none';}
+document.getElementById('btnShop').onclick=()=>document.getElementById('shopModal').style.display='flex';
+document.getElementById('btnThemes').onclick=()=>{
+  const list=document.getElementById('themesList');
+  list.innerHTML='';
+  themes.forEach(t=>{
+    const div=document.createElement('div');
+    div.className='theme'+(t.free?' free':' paid');
+    div.innerHTML=`<span>${t.name}</span><span>${t.free?'FREE':t.price+' coins'}</span>`;
+    if(!t.free) div.innerHTML+=`<button onclick="buyTheme(${themes.indexOf(t)})">Buy</button>`;
+    list.appendChild(div);
+  });
+  document.getElementById('themesModal').style.display='flex';
+};
+document.getElementById('btnAchievements').onclick=()=>{
+  const list=document.getElementById('achievementsList');
+  list.innerHTML='';
+  ACH_LIST.forEach(a=>{
+    const li=document.createElement('li');
+    li.textContent=(achievements[a]?'✅':'❌')+' '+a;
+    list.appendChild(li);
+  });
+  document.getElementById('achievementsModal').style.display='flex';
+};
+window.buyCoins=()=>{updateCoins(100); alert('+100 coins'); saveData();};
+window.buyTheme=i=>{
+  const t=themes[i];
+  if(coins>=t.price){
+    updateCoins(-t.price);
+    alert('Theme '+t.name+' unlocked!');
+  }else alert('Not enough coins!');
+};
+window.watchAd=()=>{updateCoins(50); alert('+50 coins'); award('Watch 5 Ads'); saveData();};
+window.toggleChat=()=>document.getElementById('chatbotUI').style.display=document.getElementById('chatbotUI').style.display==='none'?'flex':'none';
+window.sendMsg=()=>{};
 </script>
 </body>
 </html>
