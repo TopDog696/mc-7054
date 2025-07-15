@@ -102,7 +102,7 @@ Object.entries(blockTypes).forEach(([id,cfg])=>{
   mats[id]=new THREE.MeshLambertMaterial({color:cfg.color,transparent:cfg.transparent||false,opacity:cfg.opacity||1});
 });
 
-/* ---------- STORAGE ---------- */
+/* ---------- STORAGE ---------- -->
 let coins = Number(localStorage.getItem('coins')) || 0;
 let inventory = JSON.parse(localStorage.getItem('inventory')) || {};
 Object.keys(blockTypes).forEach(k=>inventory[k]=inventory[k]||0);
@@ -132,7 +132,6 @@ function updateCoins(val){
   document.getElementById('coins').textContent=coins;
   saveData();
 }
-document.getElementById('coins').textContent=coins;
 
 /* ---------- THREE ---------- */
 const scene = new THREE.Scene(); scene.fog=new THREE.Fog(0x87ceeb,40,150);
@@ -141,7 +140,7 @@ const renderer = new THREE.WebGLRenderer({canvas:document.getElementById('game')
 renderer.setSize(innerWidth,innerHeight);
 document.body.appendChild(renderer.domElement);
 
-/* ---------- WORLD ---------- */
+/* ---------- WORLD ---------- -->
 const blocks=new Map(), WORLD_RAD=256, chunkSize=32;
 function key(x,y,z){return `${x}|${y}|${z}`;}
 function getHeight(x,z){return Math.floor(Math.sin(x*.02)*Math.cos(z*.02)*8+Math.sin(x*.006)*Math.cos(z*.006)*20))+12;}
@@ -288,7 +287,7 @@ function update(){
 }
 requestAnimationFrame(update);
 
-/* ---------- MODALS ---------- */
+/* ---------- MODALS ---------- -->
 const themes=[
   {name:'Classic',free:true,color:'#87ceeb'},
   {name:'Night',free:true,color:'#001'},
@@ -302,7 +301,7 @@ const themes=[
   {name:'Gold',free:false,price:6400,color:'#ffd700'}
 ];
 function closeModal(id){document.getElementById(id).style.display='none';}
-document.getElementById('btnStart').onclick=()=>{document.getElementById('mainMenu').style.display='none';};
+document.getElementById('btnStart').onclick=()=>document.getElementById('mainMenu').style.display='none';
 document.getElementById('btnShop').onclick=()=>document.getElementById('shopModal').style.display='flex';
 document.getElementById('btnAchievements').onclick=()=>{
   const list=document.getElementById('achievementsList');
@@ -329,7 +328,8 @@ window.buyTheme=i=>{
 };
 window.watchAd=()=>{updateCoins(50); award('Watch 5 Ads');};
 window.toggleChat=()=>document.getElementById('chatbotUI').style.display=document.getElementById('chatbotUI').style.display==='none'?'flex':'none';
-window.pauseGame=window.restartGame=()=>{};
+window.pauseGame=()=>{};
+window.restartGame=()=>location.reload();
 </script>
 </body>
 </html>
