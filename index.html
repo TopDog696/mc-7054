@@ -26,6 +26,8 @@
     .invSlot.selected{border-color:#ff0}
     #progressBar{position:fixed;top:55%;left:50%;transform:translate(-50%,-50%);width:120px;height:8px;background:#333;border-radius:4px;display:none}
     #progressFill{width:0%;height:100%;background:#fff;border-radius:4px}
+ 
+  
   </style>
 </head>
 <body>
@@ -49,7 +51,7 @@
   <label>Sound&nbsp;<input type="range" id="masterVol" min="0" max="1" step="0.1" value="0.3"></label>
   <button onclick="watchAd()">Watch Ad (100 coins)</button>
 </div>
-
+<div id="inventory" style="position:fixed;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:4px;z-index:1000"></div>
 <!-- ===== CHATBOT MODAL ===== -->
 <div id="chatbotUI" style="display:none">
   <h2>Global Chatbot</h2>
