@@ -90,7 +90,7 @@
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
 window.THREE = THREE;
 
-/* ---------- CONFIG ---------- */
+/* ---------- CONFIG ---------- -->
 const blockTypes = {
   grass:{color:0x4a7c59}, dirt:{color:0x8b4513}, stone:{color:0x696969},
   wood:{color:0x8b4513}, leaf:{color:0x2d9d2d}, sand:{color:0xd2b48c},
@@ -102,7 +102,7 @@ Object.entries(blockTypes).forEach(([id,cfg])=>{
   mats[id]=new THREE.MeshLambertMaterial({color:cfg.color,transparent:cfg.transparent||false,opacity:cfg.opacity||1});
 });
 
-/* ---------- STORAGE ---------- -->
+/* ---------- STORAGE ---------- */
 let coins = Number(localStorage.getItem('coins')) || 0;
 let inventory = JSON.parse(localStorage.getItem('inventory')) || {};
 Object.keys(blockTypes).forEach(k=>inventory[k]=inventory[k]||0);
@@ -132,8 +132,9 @@ function updateCoins(val){
   document.getElementById('coins').textContent=coins;
   saveData();
 }
+document.getElementById('coins').textContent=coins;
 
-/* ---------- THREE ---------- */
+/* ---------- THREE ---------- -->
 const scene = new THREE.Scene(); scene.fog=new THREE.Fog(0x87ceeb,40,150);
 const camera = new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,200);
 const renderer = new THREE.WebGLRenderer({canvas:document.getElementById('game'),antialias:true});
@@ -183,7 +184,7 @@ scene.add(new THREE.AmbientLight(0xffffff,.7));
 const sunLight=new THREE.DirectionalLight(0xffffff,.9);
 sunLight.position.set(1,1,1); scene.add(sunLight);
 
-/* ---------- PLAYER ---------- */
+/* ---------- PLAYER ---------- -->
 let px=0, py=25, pz=0, velY=0, onGround=false;
 const armGroup=new THREE.Group();
 const armGeo=new THREE.BoxGeometry(.25,1,.25);
