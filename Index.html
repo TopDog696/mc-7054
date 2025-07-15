@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Minecraft Clone – 7054</title>
+  <style>
+    body{margin:0;overflow:hidden;background:#87ceeb}
+    #crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font:24px bold;pointer-events:none}
+  </style>
+</head>
+<body>
+<div id="crosshair">+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+/* ---------- Minecraft clone in one file ---------- */
+const scene=new THREE.Scene(); scene.fog=new THREE.Fog(0x87ceeb,10,100);
+const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,1000);
+const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setSize(innerWidth,innerHeight); document.body.appendChild(renderer.domElement);
+scene.add(new THREE.AmbientLight(0xffffff,.7)); scene.add(new THREE.DirectionalLight(0xffffff,.5).position.set(1,1,1));
+const SIZE=32,blocks={},geo=new THREE.BoxGeometry(1,1,1),mats={grass:new THREE.MeshLambertMaterial({color:0x4a7c59}),dirt:new THREE.MeshLambertMaterial({color:0x8b4513}),stone:new THREE.MeshLambertMaterial({color:0x696969})};
+function noise(x,z){return Math.sin(x*.1)*Math.cos(z*.1)*3+Math.sin(x*.05)*Math.cos(z*.05)*5;}
+for(let x=-SIZE/2;x<SIZE/2;x++)for(let z=-SIZE/2;z<SIZE/2;z++){const h=Math.floor(noise(x,z));for(let y=-5;y<=h;y++){const type=y===h?'grass':y>=h-3?'dirt':'stone';const mesh=new THREE.Mesh(geo,mats[type]);mesh.position.set(x,y,z);scene.add(mesh);blocks[`${x},${y},${z}`]=mesh;}}
+camera.position.set(0,10,0);let vy=0,onGround=false;const keys={};onkeydown=e=>keys[e.code]=1;onkeyup=e=>keys[e.code]=0;document.addEventListener('click',()=>document.body.requestPointerLock());onmousemove=e=>{if(document.pointerLockElement===document.body){camera.rotation.y-=e.movementX*.002;camera.rotation.x-=e.movementY*.002;camera.rotation.x=Math.max(-Math.PI/2,Math.min(Math.PI/2,camera.rotation.x));}};
+const raycaster=new THREE.Raycaster();onmousedown=e=>{if(document.pointerLockElement!==document.body)return;raycaster.set(camera.position,new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion));const i=raycaster.intersectObjects(Object.values(blocks));if(!i.length)return;const b=i[0].object,p=b.position,n=i[0].face.normal,x=p.x+n.x,y=p.y+n.y,z=p.z+n.z;if(e.button===0){scene.remove(b);delete blocks[`${p.x},${p.y},${p.z}`];}else{const mesh=new THREE.Mesh(geo,mats.grass);mesh.position.set(x,y,z);scene.add(mesh);blocks[`${x},${y},${z}`]=mesh;}};
+function animate(){requestAnimationFrame(animate);const dir=new THREE.Vector3();if(keys['KeyW'])dir.z-=1;if(keys['KeyS'])dir.z+=1;if(keys['KeyA'])dir.x-=1;if(keys['KeyD'])dir.x+=1;dir.normalize().applyQuaternion(camera.quaternion);camera.position.add(dir.multiplyScalar(.2));vy-=.02;camera.position.y+=vy;if(camera.position.y<1.6){camera.position.y=1.6;vy=0;onGround=true;}if(keys['Space']&&onGround){vy=.3;onGround=false;}renderer.render(scene,camera);}animate();
+</script>
+</body>
+</html>
